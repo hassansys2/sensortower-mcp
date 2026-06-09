@@ -1,0 +1,26 @@
+# Runs the LOCAL vetted build. Use with:
+#   SENSOR_TOWER_API_TOKEN=xxx docker compose -f docker-compose.local.yml up -d
+services:
+  sensortower-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    image: sensortower-mcp:local
+    container_name: sensortower-mcp
+    command: ["sensortower-mcp", "--transport", "http", "--port", "8666"]
+    # Bind to localhost only — the HTTP transport has no auth, so do NOT expose it
+    # on 0.0.0.0. Your token would be usable by anyone who can reach the port.
+    ports:
+      - "127.0.0.1:8666:8666"
+    environment:
+      - SENSOR_TOWER_API_TOKEN=${SENSOR_TOWER_API_TOKEN}
+      - TRANSPORT=http
+      - PORT=8666
+      - API_BASE_URL=https://api.sensortower.com
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8666/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

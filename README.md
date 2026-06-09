@@ -80,6 +80,31 @@ docker compose up -d
 
 Then point your MCP client at the local command as usual, or at `http://localhost:8666` if your client supports HTTP MCP transport.
 
+> **Note on the default Docker assets:** `Dockerfile` installs the package from PyPI and `docker-compose.yml` pulls a prebuilt image from Docker Hub. Both fetch code that is not the source in this checkout. To run the exact source you have here, use the local build below.
+
+#### Local vetted build (recommended)
+This builds the image from the local source and installs the **exact** dependency versions from `uv.lock`, then binds the HTTP port to localhost only.
+
+```bash
+export SENSOR_TOWER_API_TOKEN=st_xxxxxxxxx
+docker compose -f docker-compose.local.yml up -d --build
+curl http://localhost:8666/health   # {"status":"healthy", ... ,"tools_available":40}
+```
+
+Files used:
+- `Dockerfile.local` — builds from local `src/`, installs via `uv sync --frozen`.
+- `docker-compose.local.yml` — binds to `127.0.0.1:8666` only and passes the token via env.
+- `Dockerfile.local.dockerignore` — keeps `README-pypi.md`/`uv.lock` in the build context (the repo-wide `.dockerignore` excludes `*.md`).
+
+Why pin via the lockfile: `requirements.txt` lists `fastmcp>=2.12.4` with no upper bound, so a fresh `pip install .` resolves to fastmcp 3.x, which removed the `on_duplicate_tools` argument and crashes the server on startup. `uv.lock` pins the tested `fastmcp==2.12.4`.
+
+Security note: the HTTP transport has no authentication. The compose file deliberately binds to `127.0.0.1` so the token is not exposed beyond the local host. Do not publish this port on `0.0.0.0`.
+
+Register with Claude Code (HTTP transport):
+```bash
+claude mcp add --transport http sensortower http://localhost:8666/mcp/
+```
+
 ### HTTP Invocation Shortcut
 When exercising the server over HTTP without a JSON-RPC session, target the legacy gateway exposed at `/legacy/tools/invoke`:
 
