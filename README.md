@@ -183,17 +183,22 @@ Issues and merge requests are welcome. Please include tests for bug fixes and ke
 
 ## Machine setup (every clone)
 
-Every machine that commits here — person or agent — sets git up once from the app-ideas super-repo, and clones
-this repo through it rather than on its own:
+Every machine that commits here — person or agent — installs the shared git setup **once**, from the app-ideas
+super-repo, and uses this repo inside that tree rather than as a standalone clone:
 
 ```sh
 git clone --recursive git@github.com:hassansys2/app-ideas.git && cd app-ideas && tools/git/setup.sh <machine>
 ```
 
-- **Commits:** the shared hook adds a `Machine: <machine>` trailer to every commit (§6).
-- **PRs:** [`.github/workflows/machine-label.yml`](.github/workflows/machine-label.yml) labels each PR
-  `machine:<machine>` from that trailer. Nothing to install. An existing label is never changed — moving it is the
-  hand-off (§3). Don't edit this copy; the canonical one is app-ideas `tools/git/workflows/`.
+Needs `gh` signed in as `hassansys2`. Step-by-step install, verification and troubleshooting:
+[app-ideas `tools/git/README.md`](https://github.com/hassansys2/app-ideas/blob/main/tools/git/README.md#install-guide).
+
+- **Commits:** a hook adds a `Machine: <machine>` trailer to every commit (§6).
+- **PRs:** open them with `gh prc` (same flags as `gh pr create`) to get the `machine:<machine>` label at creation;
+  the pre-push hook labels the branch's open PR on every push, and
+  [`.github/workflows/machine-label.yml`](.github/workflows/machine-label.yml) does the same on GitHub as a backstop.
+  A PR that already has a `machine:*` label is never changed — moving it is the hand-off (§3). Don't edit the
+  workflow copy; the canonical one is app-ideas `tools/git/workflows/`.
 
 Rules: [`MULTI_MACHINE_WORKFLOW.md`](https://github.com/hassansys2/app-ideas/blob/main/docs/MULTI_MACHINE_WORKFLOW.md)
 §0, §3, §6.
