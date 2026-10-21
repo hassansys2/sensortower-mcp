@@ -1,0 +1,64 @@
+# Machine label — gives every PR its `machine:*` owner label (app-ideas docs/MULTI_MACHINE_WORKFLOW.md §3).
+#
+# Canonical copy: app-ideas tools/git/workflows/machine-label.yml. Every repo carries an identical copy at
+# .github/workflows/machine-label.yml; change the canonical one and re-run tools/git/install-workflows.sh.
+#
+# A PR with no `machine:*` label gets one from the `Machine:` trailer of its newest commit (added by the
+# prepare-commit-msg hook, §6), or from a `Machine: <name>` line in the PR body. An existing label is never
+# touched: moving it is the hand-off. No machine found → a warning; the run stays green.
+#
+# pull_request_target runs this file from the default branch with no checkout, so it also labels stacked PRs and
+# PRs into `development`, and PR content is only ever read as data.
+name: Machine label
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number to label (backfill)
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: machine-label-${{ github.event.pull_request.number || inputs.pr }}
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Add machine label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+        run: |
+          set -euo pipefail
+          case "$PR" in ''|*[!0-9]*) echo "::error::Not a PR number: $PR"; exit 1 ;; esac
+
+          owner=$(gh api "repos/$REPO/issues/$PR/labels" --jq '[.[].name | select(startswith("machine:"))] | join(", ")')
+          if [ -n "$owner" ]; then
+            echo "Already owned by $owner — left as is."
+            exit 0
+          fi
+
+          pick() { sed -n 's/^Machine:[[:space:]]*\([A-Za-z0-9._-]\{1,40\}\)[[:space:]]*$/\1/p' | tail -n 1; }
+          machine=$(gh api --paginate "repos/$REPO/pulls/$PR/commits" --jq '.[].commit.message' | pick)
+          [ -n "$machine" ] || machine=$(gh api "repos/$REPO/pulls/$PR" --jq '.body // ""' | tr -d '\r' | pick)
+          if [ -z "$machine" ]; then
+            echo "::warning::No Machine: trailer in the commits or body — run tools/git/setup.sh <machine> on that machine, or add the machine:* label by hand."
+            exit 0
+          fi
+
+          label="machine:$machine"
+          gh api "repos/$REPO/labels/$label" --silent 2>/dev/null ||
+            gh api "repos/$REPO/labels" --silent -f name="$label" -f color=5319e7 \
+              -f description="Owned by the $machine machine (MULTI_MACHINE_WORKFLOW §3)"
+          gh api "repos/$REPO/issues/$PR/labels" --silent -f "labels[]=$label"
+          echo "Labelled #$PR $label."

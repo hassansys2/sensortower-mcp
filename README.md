@@ -180,3 +180,20 @@ See `docs/testing.md` for the full test matrix, CI recommendations, and troubles
 
 ## Contributing
 Issues and merge requests are welcome. Please include tests for bug fixes and keep API examples in the README and `README-pypi.md` synchronized.
+
+## Machine setup (every clone)
+
+Every machine that commits here — person or agent — sets git up once from the app-ideas super-repo, and clones
+this repo through it rather than on its own:
+
+```sh
+git clone --recursive git@github.com:hassansys2/app-ideas.git && cd app-ideas && tools/git/setup.sh <machine>
+```
+
+- **Commits:** the shared hook adds a `Machine: <machine>` trailer to every commit (§6).
+- **PRs:** [`.github/workflows/machine-label.yml`](.github/workflows/machine-label.yml) labels each PR
+  `machine:<machine>` from that trailer. Nothing to install. An existing label is never changed — moving it is the
+  hand-off (§3). Don't edit this copy; the canonical one is app-ideas `tools/git/workflows/`.
+
+Rules: [`MULTI_MACHINE_WORKFLOW.md`](https://github.com/hassansys2/app-ideas/blob/main/docs/MULTI_MACHINE_WORKFLOW.md)
+§0, §3, §6.
